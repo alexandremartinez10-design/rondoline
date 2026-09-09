@@ -17,7 +17,15 @@ export class GoogleProvider implements AIProvider {
       throw new ProviderNotConfiguredError('google');
     }
     if (!this.client) {
-      this.client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+      // GOOGLE_BASE_URL permet de viser un proxy d'entreprise, un point de
+      // terminaison compatible, ou un serveur simulé dans les tests. Les SDK
+      // Anthropic et OpenAI lisent nativement leur équivalent ; celui de
+      // Google demande de le passer explicitement.
+      const baseUrl = process.env.GOOGLE_BASE_URL?.trim();
+      this.client = new GoogleGenAI({
+        apiKey: process.env.GOOGLE_API_KEY,
+        ...(baseUrl ? { httpOptions: { baseUrl } } : {}),
+      });
     }
     return this.client;
   }
