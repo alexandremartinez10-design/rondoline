@@ -70,8 +70,7 @@ export class GoogleProvider implements AIProvider {
           yield { delta };
         }
         // Certains chunks (notamment le dernier) transportent usageMetadata.
-        const usage = (chunk as unknown as { usageMetadata?: Record<string, number> })
-          .usageMetadata;
+        const usage = chunk.usageMetadata;
         if (usage) {
           inputTokens = usage.promptTokenCount ?? inputTokens;
           outputTokens = usage.candidatesTokenCount ?? outputTokens;

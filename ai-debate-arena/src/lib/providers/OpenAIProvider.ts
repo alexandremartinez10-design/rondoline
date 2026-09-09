@@ -38,7 +38,11 @@ export class OpenAIProvider implements AIProvider {
       stream = await client.chat.completions.create(
         {
           model: options.model,
-          max_tokens: options.maxTokens ?? 2048,
+          // `max_completion_tokens` et non `max_tokens` : ce dernier est
+          // déprécié et surtout REFUSÉ par les modèles de raisonnement. Comme
+          // l'interface laisse saisir librement un nom de modèle, un
+          // utilisateur peut parfaitement y entrer un tel modèle.
+          max_completion_tokens: options.maxTokens ?? 2048,
           temperature: options.temperature,
           stream: true,
           stream_options: { include_usage: true },

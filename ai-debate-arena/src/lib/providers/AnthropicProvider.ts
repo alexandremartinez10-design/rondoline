@@ -62,13 +62,21 @@ export class AnthropicProvider implements AIProvider {
       throw toProviderError(err);
     }
 
-    const finalMessage = await stream.finalMessage();
-    const usage = finalMessage.usage
-      ? {
-          inputTokens: finalMessage.usage.input_tokens,
-          outputTokens: finalMessage.usage.output_tokens,
-        }
-      : undefined;
+    // finalMessage() peut rejeter (annulation, erreur remontée en fin de flux).
+    // Hors d'un try/catch, l'erreur brute du SDK échapperait à la normalisation
+    // et l'appelant recevrait un message non traduit.
+    let usage;
+    try {
+      const finalMessage = await stream.finalMessage();
+      usage = finalMessage.usage
+        ? {
+            inputTokens: finalMessage.usage.input_tokens,
+            outputTokens: finalMessage.usage.output_tokens,
+          }
+        : undefined;
+    } catch (err) {
+      throw toProviderError(err);
+    }
 
     if (!fullText.trim()) {
       throw new ProviderRequestError('anthropic', 'Réponse vide reçue du modèle.');
