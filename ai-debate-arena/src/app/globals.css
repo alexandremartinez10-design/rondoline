@@ -1,0 +1,81 @@
+/* Les polices sont chargées et auto-hébergées par next/font dans layout.tsx,
+   qui expose --font-display-loaded et --font-mono-loaded. Les piles ci-dessous
+   conservent des solutions de repli système si le chargement échoue. */
+
+:root {
+  --bg-0: #0d0f13;
+  --bg-1: #14171d;
+  --bg-2: #1a1e26;
+  --border: #262b35;
+  --border-soft: #1e222b;
+  --text-0: #e9ebf0;
+  --text-1: #a8aebb;
+  --text-2: #6b7280;
+  --accent: #e0a458;
+  --accent-strong: #f0b96e;
+  --danger: #e0645a;
+  --success: #5cc99a;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --font-display: var(--font-display-loaded), 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: var(--font-mono-loaded), 'IBM Plex Mono', ui-monospace, monospace;
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image: radial-gradient(circle at 15% 0%, rgba(224, 164, 88, 0.05), transparent 40%);
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: rgba(224, 164, 88, 0.3);
+}
+
+/* Barre de défilement discrète, cohérente avec le thème sombre */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
