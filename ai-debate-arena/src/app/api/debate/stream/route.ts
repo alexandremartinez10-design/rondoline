@@ -11,10 +11,24 @@ import { checkRateLimit, clientKey } from '@/lib/security/rateLimit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Durée maximale de la fonction, en secondes.
+ *
+ * Un débat est une suite d'appels de modèles : il se compte en minutes, pas en
+ * secondes. Sur les plateformes serverless, la valeur par défaut est très
+ * inférieure et coupe le flux en plein débat — l'utilisateur voit alors la
+ * conversation s'arrêter sans erreur explicite.
+ *
+ * Cette valeur est plafonnée par votre plan d'hébergement. Si le plafond est
+ * plus bas, abaissez MAX_TURNS_LIMIT en conséquence plutôt que de laisser les
+ * débats être tronqués.
+ */
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   // Garde-fou anti-abus : un débat coûte de l'argent (tokens facturés).
   // Sans cela, une instance publique laisse n'importe qui vider le quota.
-  const rate = checkRateLimit(clientKey(request.headers));
+  const rate = await checkRateLimit(clientKey(request.headers));
   if (!rate.allowed) {
     return jsonError(
       `Trop de débats lancés depuis cette adresse. Réessayez dans ${rate.retryAfterSeconds} secondes.`,

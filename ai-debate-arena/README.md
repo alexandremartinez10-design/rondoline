@@ -193,8 +193,68 @@ npm run dev        # serveur de développement
 npm run build      # build de production
 npm run start      # démarre le build de production
 npm run typecheck  # vérification TypeScript sans build
-npm run lint        # ESLint
+npm run lint       # ESLint
+npm test           # suite de tests (Vitest)
+npm run test:watch # tests en mode surveillance
 ```
+
+## Tests
+
+`npm test` s'exécute **sans aucune clé API et sans appel facturé**.
+
+Les tests de contrat (`tests/providers.test.ts`) méritent une mention : ils
+dirigent chaque SDK vers un serveur HTTP local (`tests/helpers/mockApiServer.ts`)
+via son URL de base, et vérifient à la fois ce que l'adaptateur *envoie* et ce
+qu'il fait des trames qu'il *reçoit*.
+
+C'est le seul moyen de couvrir ce code sans clé — et il en avait besoin : le
+mode démonstration valide le moteur mais ne traverse aucun des trois
+adaptateurs réels, qui ne s'exécutent qu'au premier débat facturé. Trois
+défauts y dormaient, dont l'envoi de `max_tokens`, déprécié et refusé par les
+modèles de raisonnement que l'interface permet pourtant de saisir.
+
+## Déploiement
+
+Trois points à régler avant d'exposer une instance publiquement.
+
+**1. Durée maximale de la fonction.** Un débat se compte en minutes. La route
+déclare `maxDuration = 300` (secondes), mais cette valeur est plafonnée par
+votre plan d'hébergement. Si le plafond est plus bas, abaissez `MAX_TURNS_LIMIT`
+en conséquence — sinon le flux est coupé en plein débat, et l'utilisateur voit
+la conversation s'arrêter sans message d'erreur.
+
+**2. Rate limiting partagé.** Le store par défaut vit dans la mémoire du
+process. En serverless, chaque instance froide repart d'un compteur vide et la
+plateforme en démarre autant que nécessaire : **ce n'est pas une protection
+sérieuse**. Branchez un store partagé au démarrage :
+
+```ts
+import { setRateLimitStore } from '@/lib/security/rateLimit';
+
+setRateLimitStore({
+  async hit(key, now, config) {
+    // Dans UNE transaction (ou un script Lua) :
+    //   1. purger la fenêtre    ZREMRANGEBYSCORE key 0 (now - config.windowMs)
+    //   2. compter              ZCARD key
+    //   3. n'ajouter QUE si le compte est sous config.max
+    // Sans atomicité, deux requêtes simultanées passent ensemble.
+    return { count, oldest, recorded };
+  },
+  async reset() {},
+});
+```
+
+Le store décide lui-même d'enregistrer ou non, et **n'enregistre pas une
+tentative refusée** : compter les refus transformerait la fenêtre glissante en
+peine plancher, un client qui martèle la route ne voyant jamais son compteur
+redescendre.
+
+**3. Variables d'environnement.** Reportez le contenu de `.env.example` dans la
+configuration de votre hébergeur. Les clés sont lues côté serveur uniquement et
+ne sont jamais exposées au navigateur.
+
+Une intégration continue (`.github/workflows/ci.yml`) enchaîne types, lint,
+tests et build à chaque push — sans clé API, là encore.
 
 ## Reprise après pause : pourquoi `startTurn`
 
@@ -212,5 +272,6 @@ suivante — un débat à deux voix se met à alterner de travers après le prem
 - Pas de base de données : l'historique vit dans `localStorage` du navigateur (un seul débat actif à la fois, effacé si vous videz le stockage local).
 - Le comptage de tokens dépend de ce que chaque API expose en streaming ; Gemini n'expose pas toujours l'usage exact en mode stream. En mode démonstration, l'usage affiché est une approximation locale (~4 caractères par token), pas une mesure.
 - "Pause" annule la requête réseau en cours ; si elle survient au milieu d'un tour, ce tour est refait entièrement à la reprise (le texte partiel n'est pas conservé, et la bulle partielle est retirée de l'affichage pour éviter un doublon).
-- Le rate limiting est en mémoire : voir la note de la section Sécurité.
-- Aucun test automatisé pour l'instant. Les points les plus rentables à couvrir en premier : `validateDebateRequest`, le calcul de reprise (`startTurn`), et le limiteur de débit — tous trois purs et sans dépendance réseau.
+- Le store de rate limiting par défaut est en mémoire : voir la section Déploiement.
+- Les tests de contrat vérifient la forme des échanges avec chaque fournisseur, pas le comportement réel de leurs API. Une évolution de format côté fournisseur ne sera visible qu'au premier débat réel.
+- L'interface n'est pas couverte par des tests : le parcours (streaming, pause, reprise, arrêt, synthèse) a été validé manuellement au navigateur, pas automatiquement.
